@@ -1,0 +1,50 @@
+@import './reset.scss'; // 에릭마이어 reset.css
+
+// COLOR SET --- not yet -----
+//
+// 00B894 민트 (포인트컬러)
+// fec13f 밝은노랑 (포인트컬러)
+// 3366CC 어둡지 않고 세련된 파랑 ( 메인컬러 )
+// 1740A1 진파랑 (메인컬러)
+
+//서브: #1B1F3B (매우 짙은 남색)
+//메인 딥컬러 : #3a2d50 (매우 짙은 퍼플)
+
+*a {
+  text-decoration: none;
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+  background-color: #ececec;
+  color: #fff;
+  padding: 10px 10px;
+  padding-left: 1rem;
+  display: flex;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+
+  img.logo {
+    display: block;
+
+    height: auto;
+    margin-right: 10px;
+  }
+}
+
+.formContainer {
+  max-width: 400px;
+  margin: 50px auto;
+}
+
+.inputField {
+  padding: 10px;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.submitButton {
+  padding: 10px 20px;
+}

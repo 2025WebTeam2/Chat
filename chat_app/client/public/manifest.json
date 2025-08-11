@@ -1,0 +1,25 @@
+{
+  "short_name": "찍고보고",
+  "name": "이제는 찍으면 다나와",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "cam_sun.png",
+      "type": "image/png",
+      "sizes": "457x356"
+    },
+    {
+      "src": "cam_moon.png",
+      "type": "image/png",
+      "sizes": "457x356"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}
