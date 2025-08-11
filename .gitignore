@@ -1,0 +1,17 @@
+
+
+
+# 예시 - node_modules, 빌드 결과만 무시하고 client 폴더는 포함하기
+chat_app/client/node_modules/
+chat_app/server/node_modules/
+chat_app/client/build/
+chat_app/server/build/
+.DS_Store
+
+
+
+
+.env.local
+
+
+.env
