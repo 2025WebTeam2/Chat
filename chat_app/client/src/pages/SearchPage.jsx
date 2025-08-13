@@ -1,48 +1,38 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { logout } from '../store/userSlice';
 import SearchBox from '../components/SearchBox';
 import ChatToggleButton from '../components/ChatToggleButton';
 import ChatList from '../components/ChatList';
-import { logout } from '../store/userSlice';
 
 function SearchPage() {
-  const userId = useSelector((state) => state.user.userId);
+  const { userId } = useSelector((state) => state.user);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [users, setUsers] = useState([]);
-  const navigate = useNavigate();
 
   const generateRoomId = (userA, userB) => {
-    const sorted = [userA, userB].sort();
-    return `room-${sorted[0]}-${sorted[1]}`;
+    return `room-${[userA, userB].sort().join('-')}`;
   };
 
   useEffect(() => {
     if (!userId) return;
     fetch('http://localhost:4000/api/users')
       .then((res) => res.json())
-      .then((data) => {
-        const filtered = data.filter((id) => id !== userId);
-        setUsers(filtered);
-      })
+      .then((data) => setUsers(data.filter((id) => id !== userId)))
       .catch((err) => console.error('사용자 목록 불러오기 실패:', err));
   }, [userId]);
 
   const handleStartChat = async (otherUserId) => {
     const roomId = generateRoomId(userId, otherUserId);
-
     try {
       await fetch('http://localhost:4000/api/chat/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomId,
-          user1: userId,
-          user2: otherUserId,
-        }),
+        body: JSON.stringify({ roomId, user1: userId, user2: otherUserId }),
       });
-
       navigate(`/chat/${roomId}`);
     } catch (err) {
       console.error('채팅방 생성 실패:', err);
@@ -50,27 +40,13 @@ function SearchPage() {
   };
 
   const handleLogout = () => {
-    // 1) 리덕스 상태 초기화
     dispatch(logout());
-    // 2) 로컬스토리지 정리
-    localStorage.removeItem('id');
-    // 3) 로그인 화면 등으로 리다이렉트 (여기선 그냥 새로고침)
     navigate('/');
-  };
-
-  const handleSearch = () => {
-    console.log('검색 쿼리:', query);
-    // 필요하면 검색 API 호출 또는 필터링 처리
   };
 
   return (
     <div className='search-page'>
-      <div className='search-header'>
-        <img src='/pickimg.png' alt='로고' className='logo-image' />
-        <h1 className='logo-text'>찍고보고</h1>
-      </div>
-
-      <div style={{ padding: '40px' }}>
+      <div style={{ padding: 40 }}>
         <p>
           환영합니다, <strong>{userId}</strong> 님!
           <button onClick={handleLogout} style={{ marginLeft: 20 }}>
@@ -79,9 +55,9 @@ function SearchPage() {
         </p>
       </div>
 
-      <SearchBox query={query} setQuery={setQuery} onSearch={handleSearch} />
+      <SearchBox query={query} setQuery={setQuery} onSearch={() => console.log('검색:', query)} />
 
-      <div style={{ padding: '40px' }}>
+      <div style={{ padding: 40 }}>
         <h3>📜 대화할 사용자 목록</h3>
         <ul style={{ listStyle: 'none', paddingLeft: 0 }}>
           {users.map((otherUserId) => (
@@ -103,7 +79,6 @@ function SearchPage() {
         </ul>
       </div>
 
-      {/* 말풍선 버튼 및 채팅방 목록 */}
       <ChatToggleButton userId={userId} />
       <ChatList userId={userId} />
     </div>

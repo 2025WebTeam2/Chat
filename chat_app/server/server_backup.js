@@ -1,74 +1,76 @@
-// chat_app/server/server.js (통합 버전)
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
 const cors = require('cors');
+const { Server } = require('socket.io');
+const multer = require('multer');
 const path = require('path');
-const session = require('express-session');
 const fs = require('fs');
 const mysql = require('mysql2');
-const multer = require('multer'); // multer 한 번만 선언
-
-const authRoutes = require('./routes/auth');
-const productRoutes = require('./routes/products');
-const emailAuth = require('./routes/emailAuth');
-
 const app = express();
 const server = http.createServer(app);
+
 const io = new Server(server, {
-  cors: { origin: 'http://localhost:3000', credentials: true },
+  cors: {
+    origin: 'http://localhost:3000',
+    methods: ['GET', 'POST'],
+  },
 });
 
-// --- Middleware ---
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
 app.use(express.json());
 app.use(
-  session({
-    secret: 'your-secret-key',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { httpOnly: true, secure: false, maxAge: 1000 * 60 * 60 },
+  cors({
+    origin: 'http://localhost:3000',
+    methods: ['GET', 'POST'],
+    credentials: true,
   })
 );
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use(express.static(path.join(__dirname, '../client/build')));
 
-// --- DB 연결 ---
+app.use(express.static(path.join(__dirname, '../client/build')));
+app.use('/uploads', express.static('uploads'));
+
+// MySQL 연결
 const connection = mysql.createConnection({
   host: process.env.MYSQL_HOST,
-  user: process.env.MYSQL_USER || 'root',
+  port: process.env.MYSQL_PORT || 3306,
+  user: process.env.MYSQL_USER,
   password: process.env.MYSQL_PASSWORD,
   database: process.env.MYSQL_DATABASE,
 });
+
 connection.connect((err) => {
-  if (err) console.error('❌ MySQL 연결 실패:', err);
-  else console.log('✅ MySQL 연결 성공');
+  if (err) {
+    console.error('❌ MySQL 연결 실패:', err);
+  } else {
+    console.log('✅ MySQL 연결 성공!');
+  }
 });
 
-app.use('/api', authRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/auth', emailAuth);
-
-// --- 내 서버 API (유저/채팅) ---
+// 닉네임 등록 말고 아이디로 변경
 app.post('/api/users', (req, res) => {
   const { id } = req.body;
   if (!id) return res.status(400).json({ error: '아이디가 필요합니다.' });
 
   const sql = `INSERT IGNORE INTO users (id) VALUES (?)`;
   connection.query(sql, [id], (err) => {
-    if (err) return res.status(500).json({ error: 'DB 오류' });
+    if (err) {
+      console.error('DB 오류:'.err);
+      return res.status(500).json({ error: 'DB 오류' });
+    }
     res.json({ success: true, id });
   });
 });
 
+// 닉네임 목록
 app.get('/api/users', (req, res) => {
   connection.query('SELECT id FROM users', (err, results) => {
     if (err) return res.status(500).json({ error: 'DB 오류' });
-    res.json(results.map((r) => r.id));
+    const ids = results.map((row) => row.id);
+    res.json(ids);
   });
 });
 
+// 채팅방 목록
 app.get('/api/chat/rooms', (req, res) => {
   const user = req.query.user;
   if (!user) return res.status(400).json({ error: '사용자 이름이 필요합니다.' });
@@ -85,6 +87,7 @@ app.get('/api/chat/rooms', (req, res) => {
   });
 });
 
+// 메시지 불러오기
 app.get('/api/chat/messages', (req, res) => {
   const { roomId } = req.query;
   if (!roomId) return res.status(400).json({ error: 'roomId가 필요합니다.' });
@@ -96,6 +99,7 @@ app.get('/api/chat/messages', (req, res) => {
   });
 });
 
+// 채팅방 생성
 app.post('/api/chat/create', (req, res) => {
   const { roomId, user1, user2 } = req.body;
   if (!roomId || !user1 || !user2) return res.status(400).json({ success: false, error: '모든 필드가 필요합니다' });
@@ -111,6 +115,7 @@ app.post('/api/chat/create', (req, res) => {
   });
 });
 
+// 채팅방 나가기
 app.post('/api/chat/exit', (req, res) => {
   const { roomId, username } = req.body;
   if (!roomId || !username) return res.status(400).json({ error: 'roomId 또는 username 누락됨' });
@@ -122,21 +127,31 @@ app.post('/api/chat/exit', (req, res) => {
   });
 });
 
-// --- Socket.io ---
+// ✅ 메시지 소켓 처리
 io.on('connection', (socket) => {
   console.log('✅ 연결됨:', socket.id);
 
   socket.on('join_room', (roomId) => {
     socket.join(roomId);
+    console.log(`🟢 ${socket.id} → 방 ${roomId}`);
   });
 
   socket.on('send_message', (data) => {
     const time = new Date().toLocaleString();
-    const messagePayload = { sender: data.id, message: data.message, time };
+
+    const messagePayload = {
+      sender: data.id,
+      message: data.message,
+      time,
+    };
 
     const sql = `INSERT INTO chat_messages (room_id, sender, message) VALUES (?, ?, ?)`;
     connection.query(sql, [data.roomId, data.id, data.message], (err) => {
-      if (err) console.error('❌ 메시지 저장 오류:', err);
+      if (err) {
+        console.error('❌ 메시지 저장 오류:', err);
+      } else {
+        console.log('📝 메시지 저장 완료');
+      }
     });
 
     io.to(data.roomId).emit('receive_message', messagePayload);
@@ -147,30 +162,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// --- 이미지 업로드 라우트 ---
-const upload = multer({ dest: 'uploads/' });
-app.post('/upload', upload.single('image'), async (req, res) => {
-  try {
-    const file = req.file;
-    if (!file) return res.status(400).json({ error: '파일이 없습니다.' });
-
-    // Vision API 연동 or 분석 로직 자리
-    const data = {
-      filename: file.filename,
-      labels: [],
-      detected_text: '',
-      detected_logo: '',
-      matched_products: [],
-    };
-
-    res.json(data);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: '서버 오류' });
-  }
-});
-
-// --- React SPA 대응 ---
+// React SPA 대응
 app.get('*', (req, res) => {
   res.sendFile(path.resolve(__dirname, '../client/build/index.html'));
 });

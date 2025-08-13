@@ -6,6 +6,7 @@ function SearchBox() {
   const fileInputRef = useRef();
   const [imageUrl, setImageUrl] = useState(null);
   const [file, setFile] = useState(null);
+  const [searchText, setSearchText] = useState(''); // 친구 코드에서 가져옴
   const navigate = useNavigate();
 
   // 이미지 아이콘 클릭 시 숨겨진 파일 입력 열기
@@ -17,14 +18,19 @@ function SearchBox() {
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
-      //alert(선택한 파일: ${selectedFile.name});
-      const url = URL.createObjectURL(selectedFile); // 이미지 URL 생성
+      const url = URL.createObjectURL(selectedFile);
       setImageUrl(url);
       setFile(selectedFile);
     }
   };
 
   const handleSearch = async () => {
+    // 텍스트 검색 먼저 확인
+    if (searchText.trim() !== '') {
+      navigate(`/list?title=${encodeURIComponent(searchText)}`);
+      return;
+    }
+
     if (!file) {
       alert('먼저 이미지를 선택하세요.');
       return;
@@ -61,12 +67,12 @@ function SearchBox() {
 
   return (
     <>
-      <div className='search-box'>
-        <input type='text' placeholder='검색을 통해 원하는 물건을 찾아보세요' className='search-input' readOnly value='' />
-        <button className='icon-button' aria-label='검색' onClick={handleSearch}>
+      <div className={styles.searchBox}>
+        <input type='text' placeholder='검색을 통해 원하는 물건을 찾아보세요' className={styles.searchInput} value={searchText} onChange={(e) => setSearchText(e.target.value)} />
+        <button className={styles.iconButton} aria-label='검색' onClick={handleSearch}>
           🔍
         </button>
-        <button type='button' className='icon-button' onClick={handleImageClick} aria-label='이미지 업로드'>
+        <button type='button' className={styles.iconButton} onClick={handleImageClick} aria-label='이미지 업로드'>
           🖼️
         </button>
         <input type='file' accept='image/*' style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileChange} />

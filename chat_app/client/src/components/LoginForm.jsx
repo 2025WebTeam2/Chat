@@ -1,40 +1,41 @@
-// LoginForm.jsx
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { setUserId } from '../store/userSlice';
+import { setUserId, setUsername } from '../store/userSlice';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 function LoginForm() {
-  const [userIdInput, setUserIdInput] = useState('');
+  const [form, setForm] = useState({ userid: '', password: '' });
+  const [message, setMessage] = useState('');
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (!userIdInput.trim()) return;
-
     try {
-      const res = await fetch('http://localhost:4000/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: userIdInput }),
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        dispatch(setUserId(data.id));
-      } else {
-        alert('로그인 실패');
-      }
+      const res = await axios.post('http://localhost:4000/api/login', form);
+      dispatch(setUserId(res.data.userid));
+      dispatch(setUsername(res.data.username));
+      navigate('/');
     } catch (err) {
-      console.error('로그인 오류:', err);
+      setMessage(err.response?.data?.message || '로그인 실패');
     }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h2>아이디 입력</h2>
-      <input value={userIdInput} onChange={(e) => setUserIdInput(e.target.value)} placeholder='아이디 입력' />
-      <button type='submit'>로그인</button>
-    </form>
+    <div style={{ padding: 20 }}>
+      <h2>로그인</h2>
+      <form onSubmit={handleLogin}>
+        <input name='userid' placeholder='아이디' onChange={handleChange} required />
+        <br />
+        <input type='password' name='password' placeholder='비밀번호' onChange={handleChange} required />
+        <br />
+        <button type='submit'>로그인</button>
+      </form>
+      {message && <p>{message}</p>}
+    </div>
   );
 }
 

@@ -1,4 +1,3 @@
-// ✅ ChatPage.jsx (Redux 사용자 기준 메시지 구분)
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -9,7 +8,7 @@ const socket = io('http://localhost:4000');
 function ChatPage() {
   const { roomId } = useParams();
   const navigate = useNavigate();
-  const userId = useSelector((state) => state.user.userId);
+  const { userId } = useSelector((state) => state.user);
   const [message, setMessage] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
   const [isComposing, setIsComposing] = useState(false);
@@ -45,7 +44,7 @@ function ChatPage() {
 
     socket.emit('send_message', {
       roomId,
-      userId,
+      sender: userId,
       message,
     });
 
@@ -62,7 +61,7 @@ function ChatPage() {
       .then(() => {
         socket.emit('send_message', {
           roomId,
-          username: '[안내]',
+          sender: '[안내]',
           message: `${userId}님이 방을 나갔습니다.`,
         });
         navigate('/');
@@ -119,7 +118,6 @@ function ChatPage() {
             </div>
           );
         })}
-
         <div ref={messageEndRef} />
       </div>
 
