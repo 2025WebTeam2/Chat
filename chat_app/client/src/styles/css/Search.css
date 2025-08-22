@@ -63,7 +63,7 @@
   border: 1px solid #ccc;
   border-radius: 10px;
 
-  input[type="file"] {
+  input[type='file'] {
     margin-bottom: 10px;
   }
 

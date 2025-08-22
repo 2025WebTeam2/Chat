@@ -14,5 +14,6 @@ minHyeck/
 .env.local
 
 
-.envchat_app/server/imagesearch-462119-c34efd05462c.json
+.env
 chat_app/server/imagesearch-462119-c34efd05462c.json
+

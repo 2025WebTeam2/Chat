@@ -1,17 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+//import axios from 'axios';
 
-function ChatList({ userId }) {
+function ChatList({ userId, handleStartChat }) {
   const [rooms, setRooms] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!userId) return;
 
-    fetch(`http://localhost:4000/api/chat/rooms?user=${userId}`)
-      .then((res) => res.json())
-      .then((data) => setRooms(data))
-      .catch((err) => console.error('💥 채팅방 목록 조회 실패:', err));
+    const fetchRooms = async () => {
+      try {
+        const res = await fetch(`http://localhost:4000/api/chat/rooms?user=${userId}`);
+        const data = await res.json();
+        setRooms(data);
+      } catch (err) {
+        console.error('💥 채팅방 목록 조회 실패:', err);
+      }
+    };
+
+    fetchRooms();
   }, [userId]);
 
   if (!userId) {

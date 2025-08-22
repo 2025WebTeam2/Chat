@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Link } from 'react-router-dom';
-import Header from '../components/Header2';
 
 function ListPage() {
   const [products, setProducts] = useState([]);
@@ -28,7 +27,6 @@ function ListPage() {
 
   return (
     <>
-      <Header />
       <div style={{ padding: '20px' }}>
         <h2>검색 결과: {title}</h2>
         {products.length === 0 ? (

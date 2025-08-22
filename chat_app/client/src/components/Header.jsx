@@ -1,22 +1,36 @@
 // src/components/Header.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../store/userSlice';
-
+import SearchBox from './SearchBox';
 import styles from '../styles/css/com.module.css';
+
 import loImage from '../assets/svg/logo_ver_moon_.svg';
 
 function Header() {
-  const userId = useSelector((state) => state.user.userId);
+  const userid = useSelector((state) => state.user.userid);
   const username = useSelector((state) => state.user.username);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  // 🔹 검색어를 useState로 관리 (로컬 상태)
+  const [query, setQuery] = useState('');
+
   const handleLogout = () => {
     dispatch(logout());
-    localStorage.removeItem('id');
-    navigate('/'); // 로그아웃 후 홈(로그인 페이지) 이동
+    localStorage.removeItem('userid');
+    navigate('/'); // 로그아웃 후 홈 이동
+  };
+
+  const goToSearchPage = () => {
+    navigate('/');
+  };
+
+  const handleSearch = () => {
+    if (query.trim() !== '') {
+      navigate('/result', { state: { query } });
+    }
   };
 
   return (
@@ -31,11 +45,25 @@ function Header() {
       }}
     >
       <img src={loImage} alt='로고' className={styles.logo} />
+      <button
+        onClick={goToSearchPage}
+        style={{
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+        }}
+      ></button>
 
-      {userId ? (
+      {/* 🔹 검색박스에 query와 setQuery 전달 */}
+      <SearchBox query={query} setQuery={setQuery} onSearch={handleSearch} />
+
+      {userid ? (
         <div>
           <span style={{ marginRight: 15 }}>
-            안녕하세요, <strong>{username || userId}</strong>님!
+            안녕하세요, <strong>{username || userid}</strong>님!
           </span>
           <button onClick={handleLogout} style={{ padding: '5px 10px' }}>
             로그아웃
@@ -46,7 +74,7 @@ function Header() {
           <button onClick={() => navigate('/signup')} style={{ marginRight: 10 }}>
             회원가입
           </button>
-          <button onClick={() => navigate('/')}>로그인</button>
+          <button onClick={() => navigate('/login')}>로그인</button>
         </div>
       )}
     </header>
