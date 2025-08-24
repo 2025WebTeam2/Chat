@@ -29,9 +29,9 @@ imgdb_sql 폴더
 
 01_create_db.sql
 
-02_create_tables.sql 
+02_create_tables.sql  // 혹시 insert 된 데이터에 구데이터 오류나면, 2번까지만 실행해도 ok 
 
-03_insert_category.sql
+03_insert_category.sql 
 
 04_insert_keyword.sql
 
