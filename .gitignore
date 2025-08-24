@@ -7,7 +7,7 @@ chat_app/server/node_modules/
 chat_app/client/build/
 chat_app/server/build/
 .DS_Store
-
+chat_app/server/models
 
 minHyeck/
 

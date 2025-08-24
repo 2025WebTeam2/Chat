@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom'; // useLocation 추가
 import { useSelector } from 'react-redux';
 import io from 'socket.io-client';
 
@@ -8,7 +8,12 @@ const socket = io('http://localhost:4000');
 function ChatPage() {
   const { roomId } = useParams();
   const navigate = useNavigate();
-  const { userId } = useSelector((state) => state.user);
+  const { id: userId } = useSelector((state) => state.user);
+  console.log(userId); // 로그로 확인
+  // useLocation을 사용하여 판매자 이름 가져오기
+  const location = useLocation();
+  const { sellerName } = location.state || {}; // state에서 판매자 이름을 가져옴
+  console.log(sellerName);
   const [message, setMessage] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
   const [isComposing, setIsComposing] = useState(false);
@@ -21,7 +26,9 @@ function ChatPage() {
 
     fetch(`http://localhost:4000/api/chat/messages?roomId=${roomId}`)
       .then((res) => res.json())
-      .then((data) => setChatMessages(data))
+      .then((data) => {
+        setChatMessages(data || []);
+      })
       .catch((err) => console.error('💥 이전 메시지 로딩 실패:', err));
 
     const handleReceive = (data) => {
@@ -52,6 +59,11 @@ function ChatPage() {
   };
 
   const leaveRoom = () => {
+    if (!roomId || !userId) {
+      console.error('Room ID or User ID is missing');
+      return;
+    }
+
     fetch('http://localhost:4000/api/chat/exit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -61,22 +73,25 @@ function ChatPage() {
       .then(() => {
         socket.emit('send_message', {
           roomId,
-          sender: '[안내]',
+          sender: '[안내]', // 서버에서 senderId=0 처리 + senderName='[안내]'
           message: `${userId}님이 방을 나갔습니다.`,
         });
         navigate('/');
       })
-      .catch((err) => console.error('💥 방 나가기 실패:', err));
+      .catch((err) => {
+        console.error('💥 방 나가기 실패:', err);
+      });
   };
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>💬 채팅방: {roomId}</h2>
-      <button onClick={() => navigate(-1)}>← 돌아가기</button>
-      <button onClick={leaveRoom} style={{ marginLeft: 10 }}>
-        나가기
-      </button>
-
+      <h2>💬 채팅방: {sellerName ? `${sellerName} 님과의 대화` : '대화 중'}</h2> {/* 판매자 이름 표시 */}
+      <div className='Chat_btn' style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button onClick={() => navigate(-1)}>← 돌아가기</button>
+        <button onClick={leaveRoom} style={{ marginLeft: 10 }}>
+          나가기
+        </button>
+      </div>
       <div
         style={{
           marginTop: 20,
@@ -89,9 +104,17 @@ function ChatPage() {
         }}
       >
         {chatMessages.map((msg, index) => {
-          const isMine = msg.sender === userId;
-          const isNotice = msg.sender === '[안내]';
+          const myId = Number(userId);
+          const senderId =
+            typeof msg.senderId !== 'undefined'
+              ? Number(msg.senderId)
+              : typeof msg.sender !== 'undefined' // 혹시 남아있을 구형 데이터 대비
+              ? Number(msg.sender)
+              : NaN;
+          console.log({ msg, senderId, senderName: msg.senderName });
 
+          const isNotice = msg.senderName === '[안내]' || senderId === 0;
+          const isMine = !isNotice && !isNaN(senderId) && senderId === myId;
           return (
             <div
               key={index}
@@ -100,7 +123,6 @@ function ChatPage() {
                 marginBottom: 12,
               }}
             >
-              {!isNotice && <div style={{ fontSize: 12, color: '#888' }}>{msg.sender}</div>}
               <div
                 style={{
                   display: 'inline-block',
@@ -120,7 +142,6 @@ function ChatPage() {
         })}
         <div ref={messageEndRef} />
       </div>
-
       <div style={{ marginTop: 10, display: 'flex', gap: 10 }}>
         <input
           value={message}

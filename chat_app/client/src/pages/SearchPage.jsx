@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { createProduct, getProducts, getCategories } from '../api/productsApi'; // productsApi
-import { getProductDetail } from '../api/productsApi';
+import { createProduct, getProducts, getCategories, getProductDetail } from '../api/productsApi';
 import { logout } from '../store/userSlice';
+import { createChatRoom } from '../api/chatApi';
 import SearchBox from '../components/SearchBox';
 
 function SearchPage() {
@@ -29,8 +29,8 @@ function SearchPage() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await getCategories(); // axios.get을 대신하여 getCategories 사용
-        setCategories(res); // 반환된 카테고리 목록을 상태에 저장
+        const res = await getCategories();
+        setCategories(res);
       } catch (err) {
         console.error('카테고리 불러오기 실패:', err);
       }
@@ -42,14 +42,14 @@ function SearchPage() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const res = await getProducts(query, selectedCategory); // getProducts로 쿼리와 카테고리 전달
-        setProducts(res); // 반환된 상품 목록을 상태에 저장
+        const res = await getProducts(query, selectedCategory);
+        setProducts(res);
       } catch (err) {
         console.error('상품 검색 오류:', err);
       }
     };
     fetchProducts();
-  }, [query, selectedCategory]); // 쿼리나 선택된 카테고리가 바뀔 때마다 호출
+  }, [query, selectedCategory]);
 
   // --------------------------- 로그아웃
   const handleLogout = () => {
@@ -68,11 +68,10 @@ function SearchPage() {
     formData.append('image', image);
 
     try {
-      const res = await createProduct(formData); // productsApi.js에서 제공하는 createProduct 함수 사용
+      const res = await createProduct(formData);
       alert('상품 등록 성공!');
-      let uploaded = setProducts((prev) => [res, ...prev]); // 등록된 상품을 상품 목록에 추가
+      setProducts((prev) => [res, ...prev]); // 등록된 상품을 목록에 추가
 
-      console.log(uploaded);
       // 입력 초기화
       setTitle('');
       setCategory('');
@@ -86,13 +85,23 @@ function SearchPage() {
     }
   };
 
-  // --------------------------- 상품 상세 조회
-  const fetchProductDetail = async (productId) => {
+  // --------------------------- 판매자 채팅
+  const handleSellerClick = async (sellerId, sellerName) => {
+    if (sellerId === userId) {
+      alert('자신과는 채팅할 수 없습니다.');
+      return;
+    }
+
     try {
-      const res = await getProductDetail(productId);
-      console.log(res); // 상품 상세 정보 확인
+      const res = await createChatRoom(userId, sellerId);
+      if (res.success && res.roomId) {
+        navigate(`/chat/${res.roomId}`, { state: { sellerName } });
+      } else {
+        alert('채팅방 생성 실패');
+      }
     } catch (err) {
-      console.error('상품 상세 조회 실패:', err);
+      console.error('채팅방 생성 오류:', err);
+      alert('채팅방 생성 실패');
     }
   };
 
@@ -166,22 +175,42 @@ function SearchPage() {
               </tr>
             </thead>
             <tbody>
-              {products.map((p) => {
-                console.log(p);
-                return (
-                  <tr key={p.products_id} style={{ height: '100px' }}>
-                    <td>
-                      <img src={`http://localhost:4000${p.image_url}`} alt={p.title} style={{ width: '80px', height: '80px', objectFit: 'cover' }} />
-                    </td>
-                    <td>{p.category_naame || '무슨카테고리'}</td>
-                    <td>{p.seller_name || '알수없음'}</td>
-                    <td>{p.title}</td>
-                    <td>{Number(p.price).toLocaleString()} 원</td>
-                    <td>{new Date(p.created_at).toLocaleDateString()}</td>
-                    <td>{p.product_states}</td>
-                  </tr>
-                );
-              })}
+              {products.map((p) => (
+                <tr
+                  key={p.products_id}
+                  style={{
+                    background: '#fff',
+                    borderRadius: '10px',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    height: '100px',
+                  }}
+                  onClick={() => navigate(`/product/${p.products_id}`, { state: { product: p } })}
+
+                  //onClick={() => navigate(`/product/${p.products_id}`)} // 상품 클릭 시 상세페이지 이동
+                >
+                  <td>
+                    <img src={`http://localhost:4000${p.image_url}`} alt={p.title} style={{ width: '80px', height: '80px', objectFit: 'cover' }} />
+                  </td>
+                  <td>{p.category_name || '알수없음'}</td>
+                  <td>
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation(); // tr 클릭 이벤트 방지
+                        handleSellerClick(p.seller_id, p.seller_name);
+                      }}
+                      style={{ color: 'blue', textDecoration: 'underline', cursor: 'pointer' }}
+                    >
+                      {p.seller_name || '알수없음'}
+                    </span>
+                  </td>
+                  <td>{p.title}</td>
+                  <td>{Number(p.price).toLocaleString()} 원</td>
+                  <td>{new Date(p.created_at).toLocaleDateString()}</td>
+                  <td>{p.product_states}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         )}

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
 import ChatList from './ChatList';
 
-function ChatToggleButton({ userId }) {
-  console.log(userId);
+function ChatToggleButton() {
+  const userId = useSelector((state) => state.user.id); // Redux에서 userId 가져오기
+  console.log(userId); // 로그로 확인
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleChat = () => setIsOpen((prev) => !prev);
@@ -47,7 +49,7 @@ function ChatToggleButton({ userId }) {
         >
           <h4 style={{ margin: '0 0 10px' }}>📋 내 채팅방</h4>
 
-          {userId ? <ChatList userId={userId} /> : <div style={{ color: '#888', fontSize: 14 }}>로그인 후 채팅방이 표시됩니다. </div>}
+          {userId ? <ChatList userId={userId} /> : <div style={{ color: '#888', fontSize: 14 }}>로그인 후 채팅방을 이용할 수 있습니다.</div>}
         </div>
       )}
     </div>

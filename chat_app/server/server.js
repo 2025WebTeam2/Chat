@@ -35,7 +35,7 @@ app.use(
   })
 ); //세션 미들웨어 설정(로긴유지용)
 
-//app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); //업로드 된 파일 정적 제공
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); //업로드 된 파일 정적 제공
 
 // --- DB 연결 시작 ---
 let connection;
@@ -171,33 +171,110 @@ app.get('/api/products/:id', async (req, res) => {
 });
 
 // -- 채팅 관련 ----
-// 채팅방 생성
+// // 채팅방 생성
+// app.post('/api/chat/create', async (req, res) => {
+//   const { roomId, user1, user2 } = req.body;
+//   if (!roomId || !user1 || !user2) return res.status(400).json({ error: '모든 필드 필요' });
+
+//   try {
+//     const sql = `INSERT INTO chat_rooms (room_id, user1, user2) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE room_id = room_id`;
+//     await connection.query(sql, [roomId, user1, user2]);
+//     res.json({ success: true });
+//   } catch (err) {
+//     res.status(500).json({ error: 'DB 오류' });
+//   }
+// });
+// // 채팅방 생성 API
+// app.post('/api/chat/create', async (req, res) => {
+//   const { user1, user2 } = req.body;
+
+//   if (!user1 || !user2) return res.status(400).json({ error: '모든 필드 필요' });
+
+//   try {
+//     // 유니크한 roomId 생성: user1과 user2의 ID를 합친 값으로 생성
+//     const roomId = `room-${user1}-${user2}-${Date.now()}`; // 예: room-1-2-1627589178012
+
+//     // DB에 채팅방 추가
+//     const sql = `INSERT INTO chat_rooms (room_id, user1, user2) VALUES (?, ?, ?)`;
+//     await connection.query(sql, [roomId, user1, user2]);
+
+//     res.json({ success: true, roomId }); // 생성된 roomId 응답
+//   } catch (err) {
+//     console.error('채팅방 생성 오류:', err);
+//     res.status(500).json({ error: '채팅방 생성 실패' });
+//   }
+// });
+// 채팅방 생성 API
 app.post('/api/chat/create', async (req, res) => {
-  const { roomId, user1, user2 } = req.body;
-  if (!roomId || !user1 || !user2) return res.status(400).json({ error: '모든 필드 필요' });
+  const { user1, user2 } = req.body;
+
+  if (!user1 || !user2) return res.status(400).json({ error: '모든 필드 필요' });
 
   try {
-    const sql = `INSERT INTO chat_rooms (room_id, user1, user2) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE room_id = room_id`;
+    // 기존 방 있는지 확인
+    const [existing] = await connection.query('SELECT room_id FROM chat_rooms WHERE (user1 = ? AND user2 = ?) OR (user1 = ? AND user2 = ?)', [user1, user2, user2, user1]);
+
+    if (existing.length > 0) {
+      // 이미 방이 있으면 새로 안 만들고 기존 roomId 반환
+      return res.json({ success: true, roomId: existing[0].room_id });
+    }
+    // 없으면 새로 생성
+    // 유니크한 roomId 생성: user1과 user2의 ID를 합친 값으로 생성
+    const roomId = `room-${user1}-${user2}-${Date.now()}`; // 예: room-1-2-1627589178012
+
+    // 판매자의 이름을 가져옵니다.
+    const [user1Data] = await connection.query('SELECT username FROM users WHERE id = ?', [user1]);
+    const sellerName = user1Data[0]?.username; // user1이 판매자라고 가정
+
+    // DB에 채팅방 추가
+    const sql = `INSERT INTO chat_rooms (room_id, user1, user2) VALUES (?, ?, ?)`;
     await connection.query(sql, [roomId, user1, user2]);
-    res.json({ success: true });
+
+    // 판매자 이름을 포함하여 응답
+    res.json({ success: true, roomId, sellerName });
   } catch (err) {
-    res.status(500).json({ error: 'DB 오류' });
+    console.error('채팅방 생성 오류:', err);
+    res.status(500).json({ error: '채팅방 생성 실패' });
   }
 });
-
 // 채팅방 리스트 조회
+// app.get('/api/chat/rooms', async (req, res) => {
+//   const userId = parseInt(req.query.user);
+//   if (!userId) return res.status(400).json({ error: '사용자 ID 필요' });
+
+//   const sql = `
+//     SELECT room_id,
+//       CASE WHEN user1 = ? THEN user2 ELSE user1 END AS otherUser,
+//       CASE WHEN user1 = ? THEN u2.username ELSE u1.username END AS seller_name
+//     FROM chat_rooms
+//     LEFT JOIN users u1 ON user1 = u1.id
+//     LEFT JOIN users u2 ON user2 = u2.id
+//     WHERE (user1 = ? OR user2 = ?) AND (exited_user IS NULL OR exited_user != ?)
+
+//   `;
+//   try {
+//     const [results] = await connection.query(sql, [userId, userId, userId, userId, userId]);
+//     res.json(results);
+//   } catch (err) {
+//     res.status(500).json({ error: 'DB 오류' });
+//   }
+// });
+// 채팅방 목록 조회
 app.get('/api/chat/rooms', async (req, res) => {
   const userId = parseInt(req.query.user);
   if (!userId) return res.status(400).json({ error: '사용자 ID 필요' });
 
   const sql = `
-    SELECT room_id,
-      CASE WHEN user1 = ? THEN user2 ELSE user1 END AS otherUser
-    FROM chat_rooms
-    WHERE (user1 = ? OR user2 = ?) AND (exited_user IS NULL OR exited_user != ?)
+    SELECT r.room_id,
+           CASE WHEN r.user1 = ? THEN u2.username ELSE u1.username END AS seller_name
+    FROM chat_rooms r
+    LEFT JOIN users u1 ON r.user1 = u1.id
+    LEFT JOIN users u2 ON r.user2 = u2.id
+    WHERE (r.user1 = ? OR r.user2 = ?)
   `;
+
   try {
-    const [results] = await connection.query(sql, [userId, userId, userId, userId]);
+    const [results] = await connection.query(sql, [userId, userId, userId]);
     res.json(results);
   } catch (err) {
     res.status(500).json({ error: 'DB 오류' });
@@ -210,9 +287,27 @@ app.get('/api/chat/messages', async (req, res) => {
   if (!roomId) return res.status(400).json({ error: 'roomId 필요' });
 
   try {
-    const [results] = await connection.query('SELECT * FROM chat_messages WHERE room_id = ? ORDER BY sent_at ASC', [roomId]);
+    const [results] = await connection.query(
+      `
+      SELECT 
+        m.room_id,
+        m.sender AS senderId,
+        m.message,
+        m.sent_at,
+        CASE 
+          WHEN m.sender = 0 OR m.sender IS NULL THEN '[안내]'
+          ELSE u.username
+        END AS senderName
+      FROM chat_messages m
+      LEFT JOIN users u ON m.sender = u.id
+      WHERE m.room_id = ?
+      ORDER BY m.sent_at ASC
+      `,
+      [roomId]
+    );
     res.json(results);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'DB 오류' });
   }
 });
@@ -222,6 +317,10 @@ app.post('/api/chat/exit', async (req, res) => {
   const { roomId, userId } = req.body;
   if (!roomId || !userId) return res.status(400).json({ error: 'roomId 또는 userId 누락' });
 
+  // roomId나 userId가 없으면 400 에러를 반환
+  if (!roomId || !userId) {
+    return res.status(400).json({ error: 'roomId 또는 userId 누락' });
+  }
   try {
     const sql = `UPDATE chat_rooms SET exited_user = ? WHERE room_id = ?`;
     await connection.query(sql, [userId, roomId]);
@@ -241,48 +340,36 @@ io.on('connection', (socket) => {
   });
 
   socket.on('send_message', async (data) => {
-    const { roomId, userId, message } = data;
+    const { roomId, sender, message } = data;
     const sent_at = new Date();
 
-    try {
-      // DB 저장
-      await connection.query('INSERT INTO chat_messages (room_id, sender, message) VALUES (?, ?, ?)', [roomId, userId, message]);
+    // sender가 '[안내]'일 경우, 특별한 시스템 ID(예: 0)로 처리
+    const senderId = sender === '[안내]' ? 0 : sender; // 시스템 메시지는 sender를 0으로 설정
 
-      // 같은 방 참여자들에게 전달
-      io.to(roomId).emit('receive_message', { sender: userId, message, sent_at });
+    try {
+      // 1) 저장
+      await connection.query('INSERT INTO chat_messages (room_id, sender, message) VALUES (?, ?, ?)', [roomId, senderId, message]);
+
+      // 2) 이름 조회 (시스템 메시지면 '[안내]')
+      let senderName = '[안내]';
+      if (senderId && senderId !== 0) {
+        const [rows] = await connection.query('SELECT username FROM users WHERE id = ?', [senderId]);
+        senderName = rows[0]?.username || '알 수 없음';
+      }
+
+      // 3) 브로드캐스트
+      io.to(roomId).emit('receive_message', {
+        senderId,
+        senderName,
+        message,
+        sent_at,
+      });
     } catch (err) {
       console.error('❌ 메시지 저장 오류:', err);
     }
   });
 
   socket.on('disconnect', () => console.log('❌ 연결 종료:', socket.id));
-});
-
-// --- Socket.io ---
-io.on('connection', (socket) => {
-  console.log('✅ 연결됨:', socket.id);
-
-  socket.on('join_room', (roomId) => {
-    socket.join(roomId);
-  });
-
-  socket.on('send_message', async (data) => {
-    const time = new Date().toLocaleString();
-    const messagePayload = { sender: data.id, message: data.message, time };
-
-    const sql = `INSERT INTO chat_messages (room_id, sender, message) VALUES (?, ?, ?)`;
-    try {
-      await connection.query(sql, [data.roomId, data.id, data.message]);
-    } catch (err) {
-      console.error('❌ 메시지 저장 오류:', err);
-    }
-
-    io.to(data.roomId).emit('receive_message', messagePayload);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('❌ 연결 종료:', socket.id);
-  });
 });
 
 // // --- React SPA 대응 ---

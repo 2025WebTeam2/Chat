@@ -2,9 +2,21 @@ import axios from 'axios';
 
 const BASE_URL = 'http://localhost:4000/api/chat';
 
+// // 채팅방 생성
+// export const createRoom = async (roomData) => {
+//   const response = await axios.post(`${BASE_URL}/rooms`, roomData);
+//   return response.data;
+// };
+
 // 채팅방 생성
-export const createRoom = async (roomData) => {
-  const response = await axios.post(`${BASE_URL}/rooms`, roomData);
+export const createChatRoom = async (userId, sellerId) => {
+  const roomData = {
+    user1: userId,
+    user2: sellerId,
+    roomId: `${userId}_${sellerId}`, // roomId는 userId와 sellerId 조합으로 생성
+  };
+
+  const response = await axios.post(`${BASE_URL}/create`, roomData);
   return response.data;
 };
 

@@ -3,7 +3,7 @@ import { createSlice } from '@reduxjs/toolkit';
 const initialState = {
   id: null, //pk (users.id)
   userid: null, //로그인ID
-  usernaem: null, //닉네임
+  username: null, //닉네임
   email: null,
   phone: null,
   isLoggedIn: false,
@@ -21,9 +21,15 @@ const userSlice = createSlice({
       state.email = email;
       state.phone = phone;
       state.isLoggedIn = true;
+      // localStorage에 사용자 정보 저장
+      localStorage.setItem('userid', userid);
+      localStorage.setItem('username', username);
     },
     logout: (state) => {
       Object.assign(state, initialState);
+      // localStorage에서 사용자 정보 삭제
+      localStorage.removeItem('userid');
+      localStorage.removeItem('username');
     },
     updateUsername: (state, action) => {
       state.username = action.payload; // 닉네임 변경할경우
